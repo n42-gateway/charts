@@ -188,6 +188,7 @@ Parameter | Description | Default
 `controller.autoscaling.targetMemoryUtilizationPercentage` | target memory utilization |
 `controller.autoscaling.customMetrics` | Extra custom metrics to add to the HPA | `[]`
 `controller.autoscaling.useExternalHPA` | Allow the use of an external HPA resource by not deploying the default one | `false`
+`controller.autoscaling.behavior` | Allows for specifying HPA behavior to control how to scale up or down | `{}`
 `controller.tolerations` | to control scheduling to servers with taints | `[]`
 `controller.affinity` | to control scheduling | `{}`
 `controller.nodeSelector` | to control scheduling | `{}`
