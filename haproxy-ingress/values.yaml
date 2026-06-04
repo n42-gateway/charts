@@ -288,6 +288,10 @@ controller:
     # Enable using external HPA by removing number of replicas
     # from the Controller deployment, but not deplying the HPA object
     useExternalHPA: false
+    # Allows for specifying hpa behavior to control how to scale up or down. 
+    # See HPA Kubernetes docs: https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/#configurable-scaling-behavior
+    behavior: {}
+    
 
   ## VerticalPodAutoscaler configuration
   ## Ref: https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler
