@@ -1,0 +1,16 @@
+{{- if or .Values.controller.template .Values.controller.templateFile -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    {{- include "n42-gateway.labels" . | nindent 4 }}
+  name: {{ include "n42-gateway.fullname" . }}-template
+  namespace: {{ .Release.Namespace }}
+data:
+  haproxy.tmpl: |
+{{- if .Values.controller.templateFile }}
+    {{- .Files.Get .Values.controller.templateFile | nindent 4 }}
+{{- else }}
+    {{- .Values.controller.template | nindent 4 }}
+{{- end }}
+{{- end }}

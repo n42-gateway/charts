@@ -1,0 +1,93 @@
+{{- if .Values.defaultBackend.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    {{- include "n42-gateway.defaultBackend.labels" . | nindent 4 }}
+  name: {{ include "n42-gateway.defaultBackend.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.defaultBackend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "n42-gateway.defaultBackend.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+    {{- if .Values.defaultBackend.podAnnotations }}
+      annotations:
+        {{- toYaml .Values.defaultBackend.podAnnotations | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "n42-gateway.defaultBackend.selectorLabels" . | nindent 8 }}
+        {{- if .Values.defaultBackend.podLabels }}
+        {{- toYaml .Values.defaultBackend.podLabels | nindent 8 }}
+        {{- end }}
+    spec:
+      containers:
+        - name: {{ .Values.defaultBackend.name }}
+          image: "{{ .Values.defaultBackend.image.registry }}/{{ .Values.defaultBackend.image.repository }}:{{ .Values.defaultBackend.image.tag }}"
+          imagePullPolicy: "{{ .Values.defaultBackend.image.pullPolicy }}"
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.defaultBackend.resources | nindent 12 }}
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+{{- if .Values.defaultBackend.securityContext }}
+          securityContext:
+            {{- toYaml .Values.defaultBackend.securityContext | nindent 12 }}
+{{- end }}
+    {{- if .Values.serviceAccount.create }}
+      serviceAccountName: {{ include "n42-gateway.defaultBackend.fullname" . }}
+    {{- end }}
+    {{- if .Values.defaultBackend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .Values.defaultBackend.nodeSelector | nindent 8 }}
+    {{- end }}
+    {{- if .Values.defaultBackend.tolerations }}
+      tolerations:
+        {{- toYaml .Values.defaultBackend.tolerations | nindent 8 }}
+    {{- end }}
+    {{- if .Values.defaultBackend.affinity }}
+      affinity:
+        {{- toYaml .Values.defaultBackend.affinity | nindent 8 }}
+    {{- end }}
+      terminationGracePeriodSeconds: 60
+    {{- if .Values.defaultBackend.podSecurityContext }}
+      securityContext:
+        {{- toYaml .Values.defaultBackend.podSecurityContext | nindent 8 }}
+    {{- else }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65000
+        runAsGroup: 65000
+        fsGroup: 65000
+    {{- end }}
+    {{- if .Values.defaultBackend.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.defaultBackend.imagePullSecrets | nindent 8 }}
+    {{- end }}
+    {{- if .Values.defaultBackend.priorityClassName }}
+      priorityClassName: {{ .Values.defaultBackend.priorityClassName | quote }}
+    {{- end }}
+{{- end }}

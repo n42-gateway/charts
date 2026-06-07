@@ -1,0 +1,716 @@
+# Enable RBAC
+rbac:
+  create: true
+  secret:
+    write: false
+  security:
+    # Configures PodSecurityPolicy. This resource was removed on Kubernetes v1.25,
+    # so it is ignored on clusters version v1.25 or newer.
+    enable: false
+
+# Create ServiceAccount
+serviceAccount:
+  # Annotations to be added to the ServiceAccount
+  annotations: {}
+  # - eks.amazonaws.com/role-arn: "arn:aws:iam::111111111111:role/some-role-name"
+  # Specifies whether a ServiceAccount should be created
+  create: true
+  # The name of the ServiceAccount to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
+  # Automount API credentials for the ServiceAccount.
+  automountServiceAccountToken: true
+
+nameOverride: ""
+fullnameOverride: ""
+chartnameOverride: ""
+
+controller:
+  image:
+    registry: ghcr.io
+    repository: n42-gateway/n42-gateway
+    tag: v0.17.0-alpha.2
+    pullPolicy: IfNotPresent
+
+  imagePullSecrets: []
+  # - name: secret-name
+
+  ## Additional command line arguments to pass to N42 Gateway controller
+  ## E.g. to specify the default SSL certificate you can use
+  ## extraArgs:
+  ##   default-ssl-certificate: "<namespace>/<secret_name>"
+  ##   reload-strategy: "reusesocket"
+  extraArgs: {}
+
+  ## Additional environment variables to set
+  extraEnvs: []
+  # extraEnvs:
+  #   - name: FOO
+  #     valueFrom:
+  #       secretKeyRef:
+  #         key: FOO
+  #         name: secret-resource
+
+  ## Additional volumes and volume mounts
+  extraVolumes: []
+  extraVolumeMounts: []
+
+  ## Additional containers to the pod.
+  extraContainers: []
+
+  ## Additional containers that can initialize the pod.
+  initContainers: []
+
+  ## Name of controller container
+  containerName: n42-gateway
+  ## Name of init container, if used
+  initContainerName: init
+
+  ## Custom haproxy template
+  template: ""
+  ## Path to custom haproxy.tmpl to load into the configmap
+  templateFile: ""
+
+  ## A manually deployed default backend service
+  ## Ignored if defaultBackend.enabled = true
+  ## Must be <namespace>/<service_name>
+  ##
+  defaultBackendService: ""
+
+  ## Name of the ingress and gateway class resource, if enabled, to route through this controller
+  ##
+  ingressClass: n42
+
+  ## Defines the fully qualified controller name to matched in Ingress and Gateway Class resources.
+  ## If configured, controller.ingressClassResource.controllerClass is ignored.
+  ##
+  fullControllerName: ""
+
+  ## Configures IngressClass resource for this controller
+  ## Uses controller.ingressClass value as the name of the resource
+  ##
+  ingressClassResource:
+    enabled: false
+    default: false
+    controllerClass: ""
+    parameters: {}
+
+  ## Configures GatewayClass resource for this controller
+  ## Uses controller.ingressClass value as the name of the resource
+  ## TODO: missing a custom controllerClass, currently N42 Gateway has one single --controller-class for both Ingress and Gateway APIs
+  ##
+  gatewayClassResource:
+    enabled: false
+
+  healthzPort: 10253
+
+  ## Liveness and readiness probe values
+  ## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
+  ##
+  livenessProbe:
+    path: /healthz
+    port: 10253
+    failureThreshold: 3
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 1
+  readinessProbe:
+    path: /healthz
+    port: 10253
+    failureThreshold: 3
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 1
+
+  ## Annotations to be added to DaemonSet/Deployment definitions
+  ##
+  annotations: {}
+
+  ## Labels to be added to DaemonSet/Deployment definitions
+  ##
+  labels: {}
+
+  ## Annotations to be added to controller pods
+  ##
+  podAnnotations: {}
+
+  ## Labels to be added to the controller pods
+  ##
+  podLabels: {}
+
+  ## Affinity to be added to controller pods
+  ##
+  podAffinity: {}
+
+  ## Priority Class to be used
+  ##
+  priorityClassName: ""
+
+  ## Security context settings to be added to the controller pods
+  ##
+  podSecurityContext: {}
+  #  sysctls:
+  #  - name: net.ipv4.ip_local_port_range
+  #    value: "1024 65535"
+
+  ## Security context settings to be added to the controller containers
+  ##
+  securityContext: {}
+  #  readOnlyRootFilesystem: true
+
+  ## Security context for the init container, when init container is configured
+  ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+  ##
+  securityContextInitContainer: {}
+
+  # Defines if controller.securityContext should be applied in the
+  # controller's pod (if legacy: true) or the container (if legacy: false)
+  legacySecurityContext: true
+
+  # ConfigMap to configure N42 Gateway
+  config: {}
+
+  # Custom files to be mounted to the controller(s)
+  # if populated a ConfigMap will be created and mounted in the controller pods in /etc/haproxy-custom-files
+  # An example usage is to add lua scripts or files containing matching patterns to be used in haproxy
+  customFiles: {}
+  #  hello.lua: |
+  #    core.Debug("Hello HAProxy!\n")
+  #  hello_again.lua: |
+  #    core.Debug("Hello again HAProxy!\n")
+
+  # Automount API credentials to the controller's pod.
+  # Note: this option does not use automountServiceAccountToken in the Pod spec, which is always configured as false.
+  # When true: ServiceAccount token is manually mounted only in the controller container, sidecars are excluded.
+  # When false: ServiceAccount token is not mounted to any container, out-of-cluster authentication should be used.
+  automountServiceAccountToken: true
+
+  # Required for use with CNI based kubernetes installations (such as ones set up by kubeadm),
+  # since CNI and hostport don't mix yet. Can be deprecated once https://github.com/kubernetes/kubernetes/issues/23920
+  # is merged
+  hostNetwork: false
+
+  # Optionally change this to ClusterFirstWithHostNet in case you have 'hostNetwork: true'.
+  # By default, while using host network, name resolution uses the host's DNS. If you wish nginx-controller
+  # to keep resolving names inside the k8s network, use ClusterFirstWithHostNet.
+  dnsPolicy: ClusterFirst
+
+  # How many seconds to wait before terminating a pod.
+  terminationGracePeriodSeconds: 60
+
+  # Topology spread constraints to be added to the controller pod
+  # - the example below may need match labels adjusted but would
+  #   cause the pods to be spread across all available pods
+  # (requires kubernetes v1.19 or later)
+  topologySpreadConstraints: []
+  #  - maxSkew: 1
+  #    topologyKey: kubernetes.io/hostname
+  #    whenUnsatisfiable: ScheduleAnyway
+  #    labelSelector:
+  #      matchLabels:
+  #        app.kubernetes.io/name: n42-gateway
+  #        app.kubernetes.io/instance: n42-gateway
+
+  # Configure container lifecycle. When scaling replicas down this can be
+  # used to prevent controller container from terminating quickly and drop in-flight requests.
+  # For example, when the controller runs behind Network Load Balancer this can be used
+  # to configure preStop hook to sleep along with deregistration_delay.
+  lifecycle: {}
+
+  ## DaemonSet or Deployment
+  ##
+  kind: Deployment
+
+  # TCP service key:value pairs
+  # <port>: <namespace>/<servicename>:<portnumber>[:[<in-proxy>][:<out-proxy>]]
+  # https://n42-gateway.github.io/docs/configuration/command-line/#tcp-services-configmap
+  tcp: {}
+  #  8080: "default/example-tcp-svc:9000"
+
+  # default values for http and https containerPorts
+  containerPorts:
+    http: 80
+    https: 443
+
+  # optionally disable static ports, including the default 80 and 443
+  enableStaticPorts: true
+
+  ## DaemonSet configuration
+  daemonset:
+    # Enable binding ports to the host machine
+    useHostPort: false
+
+    # IP to bind host ports to
+    hostIP: null
+    # hostIP: 10.1.0.1
+
+    # Ports to bind to the host
+    hostPorts:
+      http: 80
+      https: 443
+      # List of ports from controller.tcp map
+      tcp: []
+
+    # Configure additional host ports mapping on DaemonSet deployment.
+    # Only hostIP field is optional, all the others should be provided.
+    extraHostPorts: []
+    # - containerPort: 8080
+    #   hostPort: 8080
+    #   hostIP: 10.1.0.1
+
+  # The update strategy to apply to the Deployment or DaemonSet
+  ##
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+
+  # minReadySeconds to avoid killing pods before we are ready
+  ##
+  minReadySeconds: 0
+
+  # Deployment
+  replicaCount: 1
+
+  # A PodDisruptionBudget is created only if minAvailable is
+  # greater than 0 (zero) and lesser than the replicaCount
+  # or if maxUnavailable is set.
+  # If both are set, maxUnavailable takes precedence
+  minAvailable: 1
+  #maxUnavailable: 1
+
+  resources: {}
+  #  limits:
+  #    cpu: 100m
+  #    memory: 64Mi
+  #  requests:
+  #    cpu: 100m
+  #    memory: 64Mi
+
+  autoscaling:
+    enabled: false
+    #  minReplicas: 1
+    #  maxReplicas: 11
+    #  targetCPUUtilizationPercentage: 50
+    #  targetMemoryUtilizationPercentage: 50
+    customMetrics: []
+    # Enable using external HPA by removing number of replicas
+    # from the Controller deployment, but not deplying the HPA object
+    useExternalHPA: false
+
+  ## VerticalPodAutoscaler configuration
+  ## Ref: https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler
+  ## Ref: https://kubernetes.io/docs/concepts/workloads/autoscaling/vertical-pod-autoscale/
+  ##
+  ## XXX Requires the VPA CRD and controller to be installed in the cluster.
+  ## See: https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler#installation
+  ##
+  vpa:
+    enabled: false
+    annotations: {}
+    ## updatePolicy controls how the autoscaler applies resource recommendation changes
+    ## updateMode defaults to "Off" (recommendation-only, no pod mutations).
+    updatePolicy:
+      updateMode: "Off"
+    #   updateMode: "Recreate"  # "Off", "Initial", "Recreate", "InPlaceOrRecreate" ("Auto" is deprecated)
+    #   minReplicas: 2
+    #   evictionRequirements:
+    #     - resources: ["cpu", "memory"]
+    #       changeRequirement: TargetHigherThanRequests
+    ## resourcePolicy controls per-container resource recommendation constraints
+    resourcePolicy: {}
+    #   containerPolicies:
+    #     - containerName: n42-gateway
+    #       minAllowed:
+    #         cpu: 100m
+    #         memory: 128Mi
+    #       maxAllowed:
+    #         cpu: "2"
+    #         memory: 2Gi
+    #       controlledResources: ["cpu", "memory"]
+    #       controlledValues: RequestsAndLimits  # or RequestsOnly
+    #     - containerName: haproxy
+    #       minAllowed:
+    #         cpu: 100m
+    #         memory: 128Mi
+    #       maxAllowed:
+    #         cpu: "2"
+    #         memory: 2Gi
+    #       controlledResources: ["cpu", "memory"]
+    #       controlledValues: RequestsAndLimits
+    ## recommenders allows specifying a custom VPA recommender
+    recommenders: []
+    #   - name: custom-recommender
+    ## startupBoost specifies a CPU startup boost policy for the pod
+    startupBoost: {}
+    #   cpu:
+    #     type: Factor
+    #     factor: 3
+    #     durationSeconds: 120
+
+  ## Node tolerations for server scheduling to nodes with taints
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+  ##
+  tolerations: []
+  #  - key: "key"
+  #    operator: "Equal|Exists"
+  #    value: "value"
+  #    effect: "NoSchedule|PreferNoSchedule|NoExecute(1.6 only)"
+
+  affinity: {}
+
+  ## Node labels for controller pod assignment
+  ## Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+  ##
+  nodeSelector: {}
+
+  ## The 'publishService' setting allows customization of the source of the IP address or FQDN to report
+  ## in the ingress status field. If disabled (default), the field will not be set by the controller.
+  ## If enabled, it reads the information provided by the service, unless pathOverride is specified.
+  ## If a value for 'publish-service' is specified in controller.extraArgs, it overrides this setting.
+  ##
+  publishService:
+    ## Enable 'publishService' or not, ignored if controller.extraArgs.publish-service is set
+    ##
+    enabled: false
+    ## Allows overriding of the publish service to bind to, ignored if controller.extraArgs.publish-service is set
+    ## Must be <namespace>/<service_name>
+    ##
+    pathOverride: ""
+
+  service:
+    enabled: true
+    annotations: {}
+    labels: {}
+    clusterIP: ""
+    clusterIPs: []
+
+    ## List of IP addresses at which the controller services are available
+    ## Ref: https://kubernetes.io/docs/user-guide/services/#external-ips
+    ##
+    externalIPs: []
+
+    ## Dual-stack service configuration
+    ## Please see the README for other required settings to make dual-stack mode work.
+    ## Ref: https://kubernetes.io/docs/concepts/services-networking/dual-stack/#services
+    ##
+    # ipFamilies: [IPv4]
+    # ipFamilyPolicy: PreferDualStack
+
+    loadBalancerClass: ""
+    loadBalancerIP: ""
+    loadBalancerSourceRanges: []
+
+    httpPorts:
+      - port: 80
+        targetPort: http
+        # nodePort:
+    httpsPorts:
+      - port: 443
+        targetPort: https
+        # nodePort:
+
+    ## Add extra ports to the service
+    ## Useful when adding the 'tcp-service-port' configuration key
+    ## Ref: https://n42-gateway.github.io/docs/configuration/keys/#tcp-services
+    extraPorts: []
+    # - port: 8080
+    #   targetPort: 8080
+    #   nodePort: 30012
+
+    ## Set external traffic policy to: "Local" to preserve source IP on
+    ## providers supporting it
+    ## Ref: https://kubernetes.io/docs/tutorials/services/source-ip/#source-ip-for-services-with-typeloadbalancer
+    externalTrafficPolicy: Local
+
+    healthCheckNodePort: 0
+
+    type: LoadBalancer
+
+  ## Add extra services
+  ## Refer to controller.service for available keys
+  extraServices: []
+
+  ## If controller.haproxy.enabled = true, an external haproxy instance
+  ## is configured and managed as a sidecar container
+  haproxy:
+    enabled: false
+
+    image:
+      registry: docker.io
+      repository: haproxy
+      tag: "3.0.23-alpine"
+      pullPolicy: IfNotPresent
+
+    ## Additional command line arguments to pass to haproxy
+    extraArgs: {}
+
+    resources: {}
+    #  limits:
+    #    cpu: 500m
+    #    memory: 768Mi
+    #  requests:
+    #    cpu: 500m
+    #    memory: 768Mi
+
+    # Configure container lifecycle. When scaling replicas down this can be
+    # used to prevent controller container from terminating quickly and drop in-flight requests.
+    # For example, when the controller runs behind Network Load Balancer this can be used
+    # to configure preStop hook to sleep along with deregistration_delay.
+    lifecycle: {}
+
+    ## Container Security Context for the haproxy container
+    ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+    ##
+    securityContext: {}
+
+  stats:
+    enabled: false
+    port: 1936
+    hostPort: ~
+
+    service:
+      annotations: {}
+      clusterIP: ""
+
+      ## List of IP addresses at which the stats service is available
+      ## Ref: https://kubernetes.io/docs/user-guide/services/#external-ips
+      ##
+      externalIPs: []
+
+      loadBalancerIP: ""
+      loadBalancerSourceRanges: []
+      servicePort: 1936
+      type: ClusterIP
+
+  ## If controller.stats.enabled = true and controller.metrics.enabled = true, Prometheus metrics will be exported
+  ## Metrics will also be exposed if the embedded haproxy's exporter is used
+  ##
+  metrics:
+    enabled: false
+
+    # Defines if the haproxy's embedded prometheus exporter should be used
+    # If false, haproxy_exporter sidecar container is used instead and stats need to be enabled
+    embedded: true
+
+    # Port number the exporter is listening to
+    port: 9101
+
+    # The port the controller exports metrics on.
+    # If you change it here, you must also change it using the controller.extraArgs.
+    controllerPort: 10254
+
+    # prometheus exporter for haproxy
+    # https://github.com/prometheus/haproxy_exporter
+    # (scrapes the stats port and exports metrics to prometheus)
+    # Only used if embedded == false
+    image:
+      registry: quay.io
+      repository: prometheus/haproxy-exporter
+      tag: "v0.11.0"
+      pullPolicy: IfNotPresent
+
+    ## Additional command line arguments to pass to haproxy_exporter
+    ## E.g. to specify the client timeout you can use
+    ## extraArgs:
+    ##   haproxy.timeout: 15s
+    extraArgs: {}
+
+    resources: {}
+    #  limits:
+    #    cpu: 500m
+    #    memory: 600Mi
+    #  requests:
+    #    cpu: 200m
+    #    memory: 400Mi
+
+    ## Container Security Context for the logs container
+    ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+    ##
+    securityContext: {}
+
+    service:
+      annotations: {}
+      # prometheus.io/scrape: "true"
+      # prometheus.io/port: "10254"
+
+      clusterIP: ""
+
+      ## List of IP addresses at which the stats-exporter service is available
+      ## Ref: https://kubernetes.io/docs/user-guide/services/#external-ips
+      ##
+      externalIPs: []
+
+      loadBalancerClass: ""
+      loadBalancerIP: ""
+      loadBalancerSourceRanges: []
+      servicePort: 9101
+      serviceControllerPort: 10254
+      type: ClusterIP
+
+  ## If controller.stats.enabled = true and controller.metrics.enabled = true and controller.serviceMonitor.enabled = true, Prometheus ServiceMonitor will be created
+  ## Ref: https://coreos.com/operators/prometheus/docs/latest/api.html#servicemonitor
+  ## Ref: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md
+  ##
+  serviceMonitor:
+    enabled: false
+
+    # Additional labels for ServiceMonitor object
+    labels: {}
+
+    # Annotations for ServiceMonitor object
+    annotations: {}
+
+    # Prometheus honorLabels
+    honorLabels: true
+
+    # Prometheus scrape interval
+    interval: 10s
+
+    # Prometheus request extra parameters
+    # params:
+    #   no-maint:
+    #   - empty
+
+    metrics:
+      metricRelabelings: []
+      relabelings: []
+      # - sourceLabels: [ __meta_kubernetes_pod_node_name ]
+      #   regex: ^(.*)$
+      #   targetLabel: instance
+      #   replacement: $1
+      #   action: replace
+
+    ctrlMetrics:
+      metricRelabelings: []
+      relabelings: []
+      # - sourceLabels: [ __meta_kubernetes_pod_node_name ]
+      #   regex: ^(.*)$
+      #   targetLabel: instance
+      #   replacement: $1
+      #   action: replace
+
+  ## access-logs side-car container for collecting haproxy logs
+  ## Enabling this will configure haproxy to emit logs to syslog localhost:514 UDP port.
+  ## The access-logs container starts a syslog process that listens on UDP 514 and outputs to stdout.
+  logs:
+    enabled: false
+
+    # syslog for haproxy
+    # https://github.com/crisu1710/kube-syslog-sidecar
+    # (listens on UDP port 514 and outputs to stdout)
+    # registry needs to be in quotes
+    image:
+      registry: "ghcr.io"
+      repository: crisu1710/kube-syslog-sidecar
+      tag: "0.2.0"
+      pullPolicy: IfNotPresent
+
+    ## Additional volume mounts
+    extraVolumeMounts: []
+
+    resources: {}
+    #  limits:
+    #    cpu: 200m
+    #    memory: 128Mi
+    #  requests:
+    #    cpu: 100m
+    #    memory: 32Mi
+
+    ## Container Security Context for the logs container
+    ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+    ##
+    securityContext: {}
+
+    # port used by syslog container
+    port: 514
+
+    # defines as true to enable TCP based liveness and readiness probes
+    # in the logs container
+    probes: false
+
+# Custom default 404 backend
+defaultBackend:
+  enabled: false
+
+  name: default-backend
+  image:
+    registry: registry.k8s.io
+    repository: defaultbackend-amd64
+    tag: "1.5"
+    pullPolicy: IfNotPresent
+
+  imagePullSecrets: []
+  # - name: secret-name
+
+  ## Node tolerations for server scheduling to nodes with taints
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+  ##
+  tolerations: []
+  #  - key: "key"
+  #    operator: "Equal|Exists"
+  #    value: "value"
+  #    effect: "NoSchedule|PreferNoSchedule|NoExecute(1.6 only)"
+
+  affinity: {}
+
+  ## Node labels for default backend pod assignment
+  ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
+  ##
+  nodeSelector: {}
+
+  ## Annotations to be added to default backend pods
+  ##
+  podAnnotations: {}
+
+  # labels to add to the pod container metadata
+  podLabels: {}
+  #  key: value
+
+  # Deployment
+  replicaCount: 1
+
+  # A PodDisruptionBudget is created only if minAvailable is
+  # greater than 0 (zero) and lesser than the replicaCount
+  minAvailable: 1
+
+  resources:
+    limits:
+      cpu: 10m
+      memory: 20Mi
+  # requests:
+  #   cpu: 10m
+  #   memory: 20Mi
+
+  service:
+    name: ingress-default-backend
+    annotations: {}
+    clusterIP: ""
+
+    ## List of IP addresses at which the default backend service is available
+    ## Ref: https://kubernetes.io/docs/user-guide/services/#external-ips
+    ##
+    externalIPs: []
+
+    loadBalancerClass: ""
+    loadBalancerIP: ""
+    loadBalancerSourceRanges: []
+
+    servicePort: 8080
+    type: ClusterIP
+
+  ## Pod Security Context for the default backend POD
+  ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+  ##
+  podSecurityContext: {}
+
+  ## Container Security Context for the default backend container
+  ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+  ##
+  securityContext: {}
+
+  ## Priority Class for the default backend container
+  ##
+  priorityClassName: ""
