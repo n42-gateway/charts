@@ -154,6 +154,11 @@ controller:
   ##
   securityContextInitContainer: {}
 
+  ## Runtime Class to be used
+  ## Ref: https://kubernetes.io/docs/concepts/containers/runtime-class/
+  ##
+  runtimeClassName: ""
+
   # Defines if controller.securityContext should be applied in the
   # controller's pod (if legacy: true) or the container (if legacy: false)
   legacySecurityContext: true
