@@ -264,7 +264,7 @@ controller:
   replicaCount: 1
 
   # A PodDisruptionBudget is created only if minAvailable is
-  # greater than 0 (zero) and lesser than the replicaCount
+  # greater than 0 (zero) and less than the replicaCount
   # or if maxUnavailable is set.
   # If both are set, maxUnavailable takes precedence
   minAvailable: 1
@@ -286,7 +286,7 @@ controller:
     #  targetMemoryUtilizationPercentage: 50
     customMetrics: []
     # Enable using external HPA by removing number of replicas
-    # from the Controller deployment, but not deplying the HPA object
+    # from the Controller deployment, but not deploying the HPA object
     useExternalHPA: false
 
   ## VerticalPodAutoscaler configuration
@@ -662,7 +662,7 @@ defaultBackend:
   replicaCount: 1
 
   # A PodDisruptionBudget is created only if minAvailable is
-  # greater than 0 (zero) and lesser than the replicaCount
+  # greater than 0 (zero) and less than the replicaCount
   minAvailable: 1
 
   resources:
