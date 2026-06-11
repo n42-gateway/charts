@@ -317,6 +317,9 @@ spec:
 {{- if .Values.controller.priorityClassName }}
   priorityClassName: {{ .Values.controller.priorityClassName | quote }}
 {{- end }}
+{{- if .Values.controller.runtimeClassName }}
+  runtimeClassName: {{ .Values.controller.runtimeClassName | quote }}
+{{- end }}
 {{- if .Values.controller.podSecurityContext }}
   securityContext:
     {{- toYaml .Values.controller.podSecurityContext | nindent 4 }}
