@@ -69,6 +69,7 @@ controller:
   config:
     bind-ip-addr-http: "[::]"
     bind-ip-addr-tcp: "[::]"
+    bind-ip-addr-healthz: '::'
   service:
     ipFamilyPolicy: RequireDualStack
 ```
