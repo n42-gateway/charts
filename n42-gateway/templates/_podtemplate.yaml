@@ -1,0 +1,424 @@
+{{- define "n42-gateway.controller.podTemplate" -}}
+metadata:
+  annotations:
+{{- if or .Values.controller.template .Values.controller.templateFile }}
+    checksum/config: {{ include (print $.Template.BasePath "/controller-template.yaml") . | sha256sum }}
+{{- end }}
+{{- if .Values.controller.podAnnotations }}
+    {{- toYaml .Values.controller.podAnnotations | nindent 4 }}
+{{- end }}
+  labels:
+    {{- include "n42-gateway.selectorLabels" . | nindent 4 }}
+{{- if .Values.controller.podLabels }}
+    {{- toYaml .Values.controller.podLabels | nindent 4 }}
+{{- end }}
+spec:
+{{- if .Values.controller.podAffinity }}
+  affinity:
+    {{- toYaml .Values.controller.podAffinity | nindent 4 }}
+{{- end }}
+  serviceAccountName: {{ include "n42-gateway.serviceAccountName" . }}
+{{- if semverCompare ">= 1.22-0" .Capabilities.KubeVersion.Version }}
+  automountServiceAccountToken: false
+{{- end }}
+{{- if or .Values.controller.haproxy.enabled .Values.controller.initContainers }}
+  initContainers:
+{{- if .Values.controller.haproxy.enabled }}
+    - name: {{ .Values.controller.initContainerName }}
+      image: "{{ .Values.controller.image.registry }}/{{ .Values.controller.image.repository }}:{{ .Values.controller.image.tag }}"
+      imagePullPolicy: "{{ .Values.controller.image.pullPolicy }}"
+      args:
+        - --init
+      resources:
+        limits:
+          cpu: 10m
+          memory: 32Mi
+        requests:
+          cpu: 10m
+          memory: 32Mi
+      volumeMounts:
+        - mountPath: /etc/haproxy
+          name: scratch
+          subPath: etc
+{{- if .Values.controller.securityContextInitContainer }}
+      securityContext:
+        {{- toYaml .Values.controller.securityContextInitContainer | nindent 8 }}
+{{- end }}
+{{- end }}
+{{- if .Values.controller.initContainers }}
+    {{- toYaml .Values.controller.initContainers | nindent 4 }}
+{{- end }}
+{{- end }}
+  containers:
+    - name: {{ .Values.controller.containerName }}
+      image: "{{ .Values.controller.image.registry }}/{{ .Values.controller.image.repository }}:{{ .Values.controller.image.tag }}"
+      imagePullPolicy: "{{ .Values.controller.image.pullPolicy }}"
+      args:
+        - --configmap={{ .Release.Namespace }}/{{ include "n42-gateway.fullname" . }}
+        - --ingress-class={{ .Values.controller.ingressClass }}
+{{- if .Values.controller.haproxy.enabled }}
+        - --master-socket=/var/run/haproxy/master.sock
+{{- end }}
+        - --sort-backends
+{{- if .Values.controller.tcp }}
+        - --tcp-services-configmap={{ .Release.Namespace }}/{{ include "n42-gateway.fullname" . }}-tcp
+{{- end }}
+{{- if or .Values.defaultBackend.enabled .Values.controller.defaultBackendService }}
+        - --default-backend-service={{ if .Values.defaultBackend.enabled }}{{ .Release.Namespace }}/{{ include "n42-gateway.defaultBackend.fullname" . }}{{ else }}{{ .Values.controller.defaultBackendService }}{{ end }}
+{{- end }}
+{{- with .Values.controller.fullControllerName }}
+        - --full-controller-name={{ . }}
+{{- else }}
+  {{- with .Values.controller.ingressClassResource.controllerClass }}
+        - --controller-class={{ . }}
+  {{- end }}
+{{- end }}
+{{- if and .Values.controller.publishService.enabled (not (hasKey .Values.controller.extraArgs "publish-service")) }}
+        - --publish-service={{ include "n42-gateway.controller.publishServicePath" . }}
+{{- end }}
+{{- range $key, $value := .Values.controller.extraArgs }}
+  {{- if $value }}
+        - --{{ $key }}={{ $value }}
+  {{- else }}
+        - --{{ $key }}
+  {{- end }}
+{{- end }}
+{{- if or (not .Values.controller.haproxy.enabled) .Values.controller.metrics.enabled }}
+      ports:
+  {{- if not .Values.controller.haproxy.enabled }}
+        {{- include "n42-gateway.controller.ports" . | indent 8 }}
+  {{- end }}
+  {{- if .Values.controller.metrics.enabled }}
+        - name: ctrl-metrics
+          containerPort: {{ .Values.controller.metrics.controllerPort }}
+          protocol: TCP
+  {{- end }}
+{{- end }}
+{{- if not .Values.controller.haproxy.enabled }}
+      {{- include "n42-gateway.controller.probes" . | indent 6 }}
+{{- end }}
+      env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+{{- if .Values.controller.extraEnvs }}
+        {{- toYaml .Values.controller.extraEnvs | nindent 8 }}
+{{- end }}
+      volumeMounts:
+        - mountPath: /etc/haproxy
+          name: scratch
+          subPath: etc
+        - mountPath: /var/lib/haproxy
+          name: scratch
+          subPath: lib
+        - mountPath: /var/run/haproxy
+          name: scratch
+          subPath: run
+{{- if or .Values.controller.template .Values.controller.templateFile }}
+        - name: haproxy-template
+          mountPath: /etc/templates/haproxy
+{{- end }}
+{{- if and .Values.controller.customFiles (not .Values.controller.haproxy.enabled) }}
+        - name: haproxy-custom-files
+          mountPath: /etc/haproxy-custom-files
+{{- end }}
+{{- if and (semverCompare ">= 1.22-0" .Capabilities.KubeVersion.Version) .Values.controller.automountServiceAccountToken }}
+        - name: kube-api-access
+          mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          readOnly: true
+{{- end }}
+{{- if .Values.controller.extraVolumeMounts }}
+        {{- toYaml .Values.controller.extraVolumeMounts | nindent 8 }}
+{{- end }}
+      resources:
+        {{- toYaml .Values.controller.resources | nindent 8 }}
+{{- if .Values.controller.lifecycle }}
+      lifecycle:
+        {{- toYaml .Values.controller.lifecycle | nindent 8 }}
+{{- end }}
+{{- if and (not .Values.controller.legacySecurityContext) .Values.controller.securityContext }}
+      securityContext:
+        {{- toYaml .Values.controller.securityContext | nindent 8 }}
+{{- end }}
+{{- if .Values.controller.haproxy.enabled }}
+    - name: haproxy
+      image: "{{ .Values.controller.haproxy.image.registry }}/{{ .Values.controller.haproxy.image.repository }}:{{ .Values.controller.haproxy.image.tag }}"
+      imagePullPolicy: "{{ .Values.controller.haproxy.image.pullPolicy }}"
+      args:
+        - -W
+        - -S
+        - /var/run/haproxy/master.sock,mode,600
+        - -f
+        - /etc/haproxy
+  {{- range $key, $value := .Values.controller.haproxy.extraArgs }}
+    {{- if $value }}
+        - --{{ $key }}={{ $value }}
+    {{- else }}
+        - --{{ $key }}
+    {{- end }}
+  {{- end }}
+      ports:
+        {{- include "n42-gateway.controller.ports" . | indent 8 }}
+      {{- include "n42-gateway.controller.probes" . | indent 6 }}
+      resources:
+        {{- toYaml .Values.controller.haproxy.resources | nindent 8 }}
+      volumeMounts:
+        - mountPath: /etc/haproxy
+          name: scratch
+          subPath: etc
+        - mountPath: /var/lib/haproxy
+          name: scratch
+          subPath: lib
+        - mountPath: /var/run/haproxy
+          name: scratch
+          subPath: run
+{{- if .Values.controller.customFiles }}
+        - name: haproxy-custom-files
+          mountPath: /etc/haproxy-custom-files
+{{- end }}
+{{- if .Values.controller.extraVolumeMounts }}
+        {{- toYaml .Values.controller.extraVolumeMounts | nindent 8 }}
+{{- end }}
+{{- if .Values.controller.haproxy.lifecycle }}
+      lifecycle:
+        {{- toYaml .Values.controller.haproxy.lifecycle | nindent 8 }}
+{{- end }}
+{{- if .Values.controller.haproxy.securityContext }}
+      securityContext:
+        {{- toYaml .Values.controller.haproxy.securityContext | nindent 8 }}
+{{- end }}
+{{- end }}
+{{- if .Values.controller.logs.enabled }}
+    - name: access-logs
+      image: "{{ .Values.controller.logs.image.registry }}/{{ .Values.controller.logs.image.repository }}:{{ .Values.controller.logs.image.tag }}"
+      imagePullPolicy: "{{ .Values.controller.logs.image.pullPolicy }}"
+      ports:
+        - name: udp
+          containerPort: {{ .Values.controller.logs.port }}
+          protocol: UDP
+{{- if .Values.controller.logs.probes }}
+      readinessProbe:
+        tcpSocket:
+          port: {{ .Values.controller.logs.port }}
+        initialDelaySeconds: 5
+        periodSeconds: 10
+      livenessProbe:
+        tcpSocket:
+          port: {{ .Values.controller.logs.port }}
+        initialDelaySeconds: 15
+        periodSeconds: 20
+{{- end }}
+{{- if .Values.controller.logs.extraVolumeMounts }}
+      volumeMounts:
+        {{- toYaml .Values.controller.logs.extraVolumeMounts | nindent 8 }}
+{{- end }}
+      resources:
+        {{- toYaml .Values.controller.logs.resources | nindent 8 }}
+{{- if .Values.controller.logs.securityContext }}
+      securityContext:
+        {{- toYaml .Values.controller.logs.securityContext | nindent 8 }}
+{{- end }}
+{{- end }}
+{{- if and .Values.controller.stats.enabled .Values.controller.metrics.enabled (not .Values.controller.metrics.embedded) }}
+    - name: prometheus-exporter
+      image: "{{ .Values.controller.metrics.image.registry }}/{{ .Values.controller.metrics.image.repository }}:{{ .Values.controller.metrics.image.tag }}"
+      imagePullPolicy: "{{ .Values.controller.metrics.image.pullPolicy }}"
+      args:
+        - '--haproxy.scrape-uri=http://localhost:{{ .Values.controller.stats.port }}/haproxy?stats;csv'
+        - --web.listen-address=:{{ .Values.controller.metrics.port }}
+  {{- range $key, $value := .Values.controller.metrics.extraArgs }}
+    {{- if $value }}
+        - --{{ $key }}={{ $value }}
+    {{- else }}
+        - --{{ $key }}
+    {{- end }}
+  {{- end }}
+      ports:
+        - name: metrics
+          containerPort: {{ .Values.controller.metrics.port }}
+          protocol: TCP
+      livenessProbe:
+        httpGet:
+          path: /
+          port: metrics
+      readinessProbe:
+        httpGet:
+          path: /
+          port: metrics
+      resources:
+        {{- toYaml .Values.controller.metrics.resources | nindent 8 }}
+{{- if .Values.controller.metrics.securityContext }}
+      securityContext:
+        {{- toYaml .Values.controller.metrics.securityContext | nindent 8 }}
+{{- end }}
+{{- end }}
+{{- if .Values.controller.extraContainers }}
+    {{- toYaml .Values.controller.extraContainers | nindent 4 }}
+{{- end }}
+{{- if .Values.controller.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml .Values.controller.imagePullSecrets | nindent 4 }}
+{{- end }}
+  volumes:
+    - name: scratch
+      emptyDir: {}
+{{- if and (semverCompare ">= 1.22-0" .Capabilities.KubeVersion.Version) .Values.controller.automountServiceAccountToken }}
+    - name: kube-api-access
+      projected:
+        defaultMode: 0644
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3600
+            path: token
+        - configMap:
+            name: kube-root-ca.crt
+            items:
+            - key: ca.crt
+              path: ca.crt
+        - downwardAPI:
+            items:
+            - path: namespace
+              fieldRef:
+                fieldPath: metadata.namespace
+{{- end }}
+{{- if or .Values.controller.template .Values.controller.templateFile }}
+    - name: haproxy-template
+      configMap:
+        name: {{ include "n42-gateway.fullname" . }}-template
+{{- end }}
+{{- if .Values.controller.customFiles }}
+    - name: haproxy-custom-files
+      configMap:
+        name: {{ include "n42-gateway.fullname" . }}-custom-files
+{{- end }}
+{{- if .Values.controller.extraVolumes }}
+    {{- toYaml .Values.controller.extraVolumes | nindent 4 }}
+{{- end }}
+  terminationGracePeriodSeconds: {{ .Values.controller.terminationGracePeriodSeconds }}
+{{- if .Values.controller.topologySpreadConstraints }}
+  topologySpreadConstraints:
+    {{- toYaml .Values.controller.topologySpreadConstraints | nindent 4 }}
+{{- end }}
+  dnsPolicy: {{ .Values.controller.dnsPolicy }}
+  hostNetwork: {{ .Values.controller.hostNetwork }}
+{{- if .Values.controller.nodeSelector }}
+  nodeSelector:
+    {{- toYaml .Values.controller.nodeSelector | nindent 4 }}
+{{- end }}
+{{- if .Values.controller.tolerations }}
+  tolerations:
+    {{- toYaml .Values.controller.tolerations | nindent 4 }}
+{{- end }}
+{{- if .Values.controller.affinity }}
+  affinity:
+    {{- toYaml .Values.controller.affinity | nindent 4 }}
+{{- end }}
+{{- if .Values.controller.priorityClassName }}
+  priorityClassName: {{ .Values.controller.priorityClassName | quote }}
+{{- end }}
+{{- if .Values.controller.podSecurityContext }}
+  securityContext:
+    {{- toYaml .Values.controller.podSecurityContext | nindent 4 }}
+{{- else if and .Values.controller.legacySecurityContext .Values.controller.securityContext }}
+  securityContext:
+    {{- toYaml .Values.controller.securityContext | nindent 4 }}
+{{- end }}
+{{- end }}
+
+{{- define "n42-gateway.controller.ports" }}
+{{- if .Values.controller.enableStaticPorts }}
+- name: http
+  containerPort: {{ .Values.controller.containerPorts.http }}
+  {{- if eq .Values.controller.kind "DaemonSet" }}
+    {{- if .Values.controller.daemonset.hostIP }}
+  hostIP: {{ .Values.controller.daemonset.hostIP }}
+    {{- end }}
+    {{- if and .Values.controller.daemonset.useHostPort .Values.controller.daemonset.hostPorts.http }}
+  hostPort: {{ .Values.controller.daemonset.hostPorts.http }}
+    {{- end }}
+  {{- end }}
+- name: https
+  containerPort: {{ .Values.controller.containerPorts.https }}
+  {{- if eq .Values.controller.kind "DaemonSet" }}
+    {{- if .Values.controller.daemonset.hostIP }}
+  hostIP: {{ .Values.controller.daemonset.hostIP }}
+    {{- end }}
+    {{- if and .Values.controller.daemonset.useHostPort .Values.controller.daemonset.hostPorts.https }}
+  hostPort: {{ .Values.controller.daemonset.hostPorts.https }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- if and .Values.controller.metrics.enabled .Values.controller.metrics.embedded }}
+- name: metrics
+  containerPort: {{ .Values.controller.metrics.port }}
+  protocol: TCP
+{{- end }}
+{{- if .Values.controller.stats.enabled }}
+- name: stats
+  containerPort: {{ .Values.controller.stats.port }}
+  {{- if .Values.controller.stats.hostPort }}
+  hostPort: {{ .Values.controller.stats.hostPort }}
+  {{- end }}
+  protocol: TCP
+{{- end }}
+- name: healthz
+  containerPort: {{ .Values.controller.healthzPort }}
+{{- range $key, $value := .Values.controller.tcp }}
+- name: "{{ $key }}-tcp"
+  containerPort: {{ $key }}
+  protocol: TCP
+  {{- if eq $.Values.controller.kind "DaemonSet" }}
+    {{- if $.Values.controller.daemonset.hostIP }}
+  hostIP: {{ $.Values.controller.daemonset.hostIP }}
+    {{- end }}
+    {{- if $.Values.controller.daemonset.useHostPort }}
+      {{- range $p := $.Values.controller.daemonset.hostPorts.tcp }}
+        {{- if eq $key $p }}
+  hostPort: {{ $key }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- if eq $.Values.controller.kind "DaemonSet" }}
+  {{- if $.Values.controller.daemonset.useHostPort }}
+    {{- range $row := .Values.controller.daemonset.extraHostPorts }}
+- name: "{{ $row.hostPort }}-extra"
+  containerPort: {{ $row.containerPort }}
+      {{- if $row.hostIP }}
+  hostIP: {{ $row.hostIP }}
+      {{- end }}
+  hostPort: {{ $row.hostPort }}
+  protocol: TCP
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}
+
+{{- define "n42-gateway.controller.probes" }}
+livenessProbe:
+  httpGet:
+    path: {{ .Values.controller.livenessProbe.path | quote }}
+    port: {{ .Values.controller.livenessProbe.port }}
+    scheme: HTTP
+  initialDelaySeconds: {{ .Values.controller.livenessProbe.initialDelaySeconds }}
+  periodSeconds: {{ .Values.controller.livenessProbe.periodSeconds }}
+  timeoutSeconds: {{ .Values.controller.livenessProbe.timeoutSeconds }}
+  successThreshold: {{ .Values.controller.livenessProbe.successThreshold }}
+  failureThreshold: {{ .Values.controller.livenessProbe.failureThreshold }}
+readinessProbe:
+  httpGet:
+    path: {{ .Values.controller.readinessProbe.path | quote }}
+    port: {{ .Values.controller.readinessProbe.port }}
+    scheme: HTTP
+  initialDelaySeconds: {{ .Values.controller.readinessProbe.initialDelaySeconds }}
+  periodSeconds: {{ .Values.controller.readinessProbe.periodSeconds }}
+  timeoutSeconds: {{ .Values.controller.readinessProbe.timeoutSeconds }}
+  successThreshold: {{ .Values.controller.readinessProbe.successThreshold }}
+  failureThreshold: {{ .Values.controller.readinessProbe.failureThreshold }}
+{{- end }}

@@ -1,0 +1,10 @@
+{{- if .Values.controller.gatewayClassResource.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  labels:
+    {{- include "n42-gateway.labels" . | nindent 4 }}
+  name: {{ .Values.controller.ingressClass }}
+spec:
+  controllerName: {{ include "n42-gateway.controller-name" . }}
+{{- end }}

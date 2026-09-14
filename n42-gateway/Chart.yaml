@@ -1,0 +1,19 @@
+apiVersion: v2
+name: n42-gateway
+description: N42 Gateway - Ingress and Gateway API controller built on HAProxy®
+type: application
+version: 0.17.0-alpha.2
+appVersion: v0.17.0-alpha.2
+icon: https://n42-gateway.github.io/favicons/android-chrome-192x192.png
+keywords:
+  - n42
+  - ingress
+  - gateway api
+  - haproxy
+home: https://n42-gateway.github.io
+sources:
+  - https://github.com/n42-gateway/n42-gateway
+  - https://github.com/n42-gateway/charts
+maintainers:
+  - name: jcmoraisjr
+    email: jcmoraisjr@gmail.com
