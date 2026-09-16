@@ -104,7 +104,7 @@ Parameter | Description | Default
 `controller.name` | name of the controller component | `controller`
 `controller.image.registry` | controller container image registry | `quay.io`
 `controller.image.repository` | controller container image repository | `n42-gateway/n42-gateway`
-`controller.image.tag` | controller container image tag | `v0.17.0-alpha.2`
+`controller.image.tag` | controller container image tag | `v0.17.0-alpha.3`
 `controller.image.pullPolicy` | controller container image pullPolicy | `IfNotPresent`
 `controller.imagePullSecrets` | controller image pull secrets | `[]`
 `controller.extraArgs` | extra command line arguments for N42 Gateway | `{}`
@@ -125,7 +125,7 @@ Parameter | Description | Default
 `controller.haproxy.enabled` | set `true` to configure haproxy as a sidecar instead of use the embedded version | `false`
 `controller.haproxy.image.registry` | haproxy container image registry, when enabled | `docker.io`
 `controller.haproxy.image.repository` | haproxy container image repository, when enabled | `haproxy`
-`controller.haproxy.image.tag` | haproxy container image tag | `3.0.23-alpine`
+`controller.haproxy.image.tag` | haproxy container image tag | `3.0.27-alpine`
 `controller.haproxy.image.pullPolicy` | haproxy container image pullPolicy | `IfNotPresent`
 `controller.haproxy.extraArgs` | extra command line arguments for haproxy | `{}`
 `controller.haproxy.resources` | haproxy container resource requests & limits | `{}`

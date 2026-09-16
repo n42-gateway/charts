@@ -29,7 +29,7 @@ controller:
   image:
     registry: ghcr.io
     repository: n42-gateway/n42-gateway
-    tag: v0.17.0-alpha.2
+    tag: v0.17.0-alpha.3
     pullPolicy: IfNotPresent
 
   imagePullSecrets: []
@@ -441,7 +441,7 @@ controller:
     image:
       registry: docker.io
       repository: haproxy
-      tag: "3.0.23-alpine"
+      tag: "3.0.27-alpine"
       pullPolicy: IfNotPresent
 
     ## Additional command line arguments to pass to haproxy
