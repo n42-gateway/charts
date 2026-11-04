@@ -113,6 +113,7 @@ Parameter | Description | Default
 `controller.extraVolumeMounts` | extra volume mounts for N42 Gateway | `[]`
 `controller.extraContainers` | extra containers to N42 Gateway | `[]`
 `controller.initContainers` | extra init containers to N42 Gateway | `[]`
+`controller.runtimeClassName` | Runtime Class to be used | `""`
 `controller.template` | custom template for N42 Gateway | `{}`
 `controller.templateFile` | custom haproxy template path for N42 Gateway | `""`
 `controller.defaultBackendService` | backend service to use if defaultBackend.enabled==false | `""`
