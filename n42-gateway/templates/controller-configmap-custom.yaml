@@ -1,0 +1,13 @@
+{{- if .Values.controller.customFiles }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    {{- include "n42-gateway.labels" . | nindent 4 }}
+  name: {{ include "n42-gateway.fullname" . }}-custom-files
+  namespace: {{ .Release.Namespace }}
+data:
+{{- range $key, $value := .Values.controller.customFiles }}
+  {{ $key }}: {{ $value | toYaml | indent 2 | trim  }}
+{{- end }}
+{{- end }}
