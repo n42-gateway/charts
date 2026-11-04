@@ -1,28 +1,28 @@
-# HAProxy Ingress Charts
+# N42 Gateway Charts
 
-This is the home of HAProxy Ingress Charts for [Helm](https://helm.sh) package manager.
+This is the home of N42 Gateway Charts for [Helm](https://helm.sh) package manager.
 
-[![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/haproxy-ingress)](https://artifacthub.io/packages/search?repo=haproxy-ingress)
+[![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/n42-gateway)](https://artifacthub.io/packages/search?repo=n42-gateway)
 
-Add HAProxy Ingress as a new repository:
+Add N42 Gateway as a new repository:
 
 ```console
-$ helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
+$ helm repo add n42 https://n42-gateway.github.io/charts
 ```
 
 List current charts:
 
 ```console
 ## Latest version
-$ helm search repo haproxy-ingress
+$ helm search repo n42
 
 ## All stable versions
-$ helm search repo haproxy-ingress -l
+$ helm search repo n42 -l
 
 ## All stable and non stable versions
-$ helm search repo haproxy-ingress -l --devel
+$ helm search repo n42 -l --devel
 ```
 
 See installation options in the chart directory:
 
-* [HAProxy Ingress](/haproxy-ingress)
+* [N42 Gateway](/n42-gateway)
