@@ -17,6 +17,10 @@ spec:
     name: {{ include "n42-gateway.fullname" . }}
   minReplicas: {{ .Values.controller.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.controller.autoscaling.maxReplicas }}
+{{- with .Values.controller.autoscaling.behavior }}
+  behavior:
+{{- toYaml . | nindent 4 }}
+{{- end }}
   metrics:
 {{- if .Values.controller.autoscaling.targetCPUUtilizationPercentage }}
     - type: Resource
