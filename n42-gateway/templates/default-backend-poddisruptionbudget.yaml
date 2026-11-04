@@ -1,0 +1,18 @@
+{{- if and .Values.defaultBackend.enabled .Values.defaultBackend.minAvailable (gt .Values.defaultBackend.replicaCount .Values.defaultBackend.minAvailable) }}
+{{- if semverCompare ">= 1.21-0" .Capabilities.KubeVersion.Version }}
+apiVersion: policy/v1
+{{- else }}
+apiVersion: policy/v1beta1
+{{- end }}
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    {{- include "n42-gateway.defaultBackend.labels" . | nindent 4 }}
+  name: {{ include "n42-gateway.defaultBackend.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "n42-gateway.defaultBackend.selectorLabels" . | nindent 6 }}
+  minAvailable: {{ .Values.defaultBackend.minAvailable }}
+{{- end }}
