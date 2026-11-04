@@ -1,0 +1,40 @@
+{{- if and (eq .Values.controller.kind "Deployment") .Values.controller.autoscaling.enabled (not .Values.controller.autoscaling.useExternalHPA) -}}
+{{- if semverCompare ">= 1.23-0" .Capabilities.KubeVersion.Version }}
+apiVersion: autoscaling/v2
+{{- else }}
+apiVersion: autoscaling/v2beta2
+{{- end }}
+kind: HorizontalPodAutoscaler
+metadata:
+  labels:
+    {{- include "n42-gateway.labels" . | nindent 4 }}
+  name: {{ include "n42-gateway.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "n42-gateway.fullname" . }}
+  minReplicas: {{ .Values.controller.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.controller.autoscaling.maxReplicas }}
+  metrics:
+{{- if .Values.controller.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.controller.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}
+{{- if .Values.controller.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.controller.autoscaling.targetMemoryUtilizationPercentage }}
+{{- end }}
+{{- if .Values.controller.autoscaling.customMetrics }}
+    {{- toYaml .Values.controller.autoscaling.customMetrics | nindent 4 }}
+{{- end }}
+{{- end }}

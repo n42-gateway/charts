@@ -1,0 +1,29 @@
+{{- if eq .Values.controller.kind "Deployment" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  {{- with .Values.controller.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "n42-gateway.labels" . | nindent 4 }}
+  {{- with .Values.controller.labels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  name: {{ include "n42-gateway.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+{{- if not .Values.controller.autoscaling.enabled }}
+  replicas: {{ .Values.controller.replicaCount }}
+{{- end }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  strategy:
+    {{- toYaml .Values.controller.updateStrategy | nindent 4 }}
+  minReadySeconds: {{ .Values.controller.minReadySeconds }}
+  selector:
+    matchLabels:
+      {{- include "n42-gateway.selectorLabels" . | nindent 6 }}
+  template:
+    {{- include "n42-gateway.controller.podTemplate" . | nindent 4 }}
+{{- end }}
